@@ -68,16 +68,11 @@ if [ -f $existingOTAjson ]; then
 		telegram="https:"$telegram
 	fi
   github=$(grep -n "\"github\"" $existingOTAjson | cut -d ":" -f 3 | sed 's/"//g' | sed 's/,//g' | xargs)
-  extracted_images=$(grep -oP '"initial_installation_images"\s*:\s*\[\K[^\]]+' "$existingOTAjson" | tr -d '\n')
-    
-    if [[ -n "$extracted_images" ]]; then
-        initial_installation_images="["
-        IFS=',' read -ra items <<< "$extracted_images"
-        for item in "${items[@]}"; do
-            initial_installation_images+="\"${item//\"/}\","
-        done
-        initial_installation_images="${initial_installation_images%,}]"
-    fi      
+  
+  initial_installation_images=$(awk '/"initial_installation_images"/ {flag=1} flag {print; if (/]/) flag=0}' "$existingOTAjson" | sed -e 's/^[ \t]*//')
+  if [[ ! -n "$initial_installation_images" ]]; then
+    initial_installation_images='"initial_installation_images": "[""]"'
+  fi
     echo '{
   "response": [
     {
@@ -97,7 +92,7 @@ if [ -f $existingOTAjson ]; then
       "paypal": "'$paypal'",
       "telegram": "'$telegram'",
       "github": "'$github'",
-      "initial_installation_images": '$initial_installation_images'
+      '$initial_installation_images'
     }
   ]
 }' >> $output
@@ -133,7 +128,7 @@ else
       "paypal": "''",
       "telegram": "''",
       "github": "''",
-      "initial_installation_images": "''"
+      "initial_installation_images": [""]
     }
   ]
 }' >> $output
